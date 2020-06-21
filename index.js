@@ -1,0 +1,50 @@
+const express = require('express');
+var cors = require('cors');
+const app = express();
+app.use(express.json());
+app.use(cors());
+const mongo =require('mongodb');
+app.post('/api/store' , (req, res) =>{
+    console.log(req.body)
+    const store ={
+        name:req.body.store_name,
+        id:req.body.store_id,
+        type:req.body.store_type,
+        category:req.body.store_category,
+        description:req.body.store_discription
+    
+    }
+    const mongoClient = mongo.MongoClient;
+    const url = 'mongodb://localhost'
+    mongoClient.connect(url, (err, client)=>{
+        if(err){
+            console.log(err)
+        }
+        else{
+            //console.log(db)
+            const db = client.db('storeDB');
+            const collection = db.collection('store')
+            collection.insert([store],(err, result)=>{
+                if(err){
+                    console.log(err)
+                }
+                else{
+                    console.log('dqwfasdf',result)
+                }
+            })
+
+            // collection.find({}).toArray((err, result)=>{
+            //     if(err){
+            //         console.log(err)
+            //     }
+            //     else{
+            //         console.log('dqwfasdf',result)
+            //     }
+            // })
+        }
+    })
+    console.log("store-->", store)
+    res.send(store)
+});
+
+app.listen(3000, ()=> console.log('3000'))
