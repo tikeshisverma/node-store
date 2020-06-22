@@ -4,19 +4,18 @@ var cors = require('cors');
 let mongoose = require('mongoose');
 let multer = require('multer');
 let GridFsStorage = require('multer-gridfs-storage');
-let gridfs = require('gridfs-stream');
+let Grid = require('gridfs-stream');
 const mongo =require('mongodb');
 var fs = require('fs');
-
+const getFile = require('./getFile')
 //mongoose.connect('mongodb://localhost:27017/storeDB');
-mongoose.connect('mongodb://localhost:27017/storeDB');
-mongoose.Promise = global.Promise;
-
-gridfs.mongo = mongoose.mongo;
-
+const conn = mongoose.createConnection('mongodb://localhost:27017/storeDB');
+Grid.mongo = mongoose.mongo;
+console.log('conn.db-->', conn.db)
 var connection = mongoose.connection;
+// console.log('connectinos-->', connection)
+let gfs = Grid(conn.db, mongoose.mongo)
 connection.on('error', console.error.bind(console, 'connection error:'));
-
 let port = 3000;
 
 const app = express();
@@ -26,14 +25,17 @@ app.use(cors());
 
 let storage = new GridFsStorage({
     url: 'mongodb://localhost:27017/storeDB',
-    file: (req, file) => {
+    // file: (req, file) => {
+    //     let date = Date.now();
+    //     return {
+    //         filename: file.fieldname + '-' + date + '.'
+    //     }
+    // },
+    filename: (req, file, cb) => {
         let date = Date.now();
-        return {
-            bucketName: 'store_logo',
-            filename: file.fieldname + '-' + date + '.'
-        }
+        // The way you want to store your file in database
+        cb(null, file.fieldname + '-' + date + '.'); 
     },
-    
     // Additional Meta-data that you want to store
     metadata: function(req, file, cb) {
         cb(null, { originalname: file.originalname });
@@ -42,6 +44,36 @@ let storage = new GridFsStorage({
 });
 // Multer configuration for single file uploads
 let upload = multer({storage}).single('store_logo');
+
+app.get('/image', (req, res)=>{
+    return getFile.getFile(req, res)
+})
+app.get('/files', (req, res) => {
+    let filesData = [];
+    let count = 0;
+    gfs.collection('store'); // set the collection to look up into
+
+    gfs.files.find({}).toArray((err, files) => {
+        // Error checking
+        console.log('files-->', files)
+        if(!files || files.length === 0){
+            return res.status(404).json({
+                responseCode: 1,
+                responseMessage: "error"
+            });
+        }
+        res.send({ title: 'NodeJS file upload tutorial', photolist : files });
+        // Loop through all the files and fetch the necessary information
+        files.forEach((file) => {
+            filesData[count++] = {
+                originalname: file.metadata.originalname,
+                filename: file.filename,
+                contentType: file.contentType
+            }
+        });
+        res.json(filesData);
+    });
+});
 
 // Route for file upload
 app.post('/upload', (req, res) => {
@@ -66,6 +98,7 @@ app.get('/api/store', (req, res)=>{
         else{
             //console.log(db)
             const db = client.db('storeDB');
+            console.log('db from store--->', db)
             const collection = db.collection('store')
             collection.find({id:req.query.id}).toArray((err, result)=>{
                 if(err){
