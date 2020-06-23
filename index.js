@@ -8,8 +8,15 @@ const app = express();
 app.use(express.json());
 app.use(cors());
 
+// "C:\Program Files\MongoDB\Server\4.2\bin\mongo.exe" --dbpath "C:\Program Files\MongoDB\Server\4.2\data"
 
 app.get('/api/store', (req, res)=>{
+    let searchParam = {}
+    if(req.query.id){
+        searchParam = {id: req.query.id}
+    } else if(req.query.email){
+        searchParam = {email: req.query.email}
+    }
     console.log(req.query.id)
     const mongoClient = mongo.MongoClient;
     const url = 'mongodb://localhost'
@@ -18,10 +25,9 @@ app.get('/api/store', (req, res)=>{
             console.log(err)
         }
         else{
-            //console.log(db)
             const db = client.db('storeDB');
             const collection = db.collection('store')
-            collection.find({id:req.query.id}).toArray((err, result)=>{
+            collection.find(searchParam).toArray((err, result)=>{
                 if(err){
                     console.log(err)
                 }
@@ -40,7 +46,8 @@ app.post('/api/store' , (req, res) =>{
         id:req.body.store_id,
         type:req.body.store_type,
         category:req.body.store_category,
-        description:req.body.store_discription
+        description:req.body.store_discription,
+        email:req.body.user_email,
     
     }
     const mongoClient = mongo.MongoClient;
